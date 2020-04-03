@@ -1,0 +1,3 @@
+rootProject.name='TICEAndroidCryptoApp'
+include ':app'
+include ':ticeandroidcrypto'
