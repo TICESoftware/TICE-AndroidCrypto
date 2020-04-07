@@ -1,18 +1,22 @@
 package com.ticeapp.ticeandroidcrypto
 
+import android.util.Base64
 import com.goterl.lazycode.lazysodium.LazySodiumAndroid
 import com.goterl.lazycode.lazysodium.SodiumAndroid
 import com.goterl.lazycode.lazysodium.interfaces.AEAD
 import com.goterl.lazycode.lazysodium.utils.Key
-import com.ticeapp.androiddoubleratchet.DoubleRatchet
-import com.ticeapp.androiddoubleratchet.Message
-import com.ticeapp.androiddoubleratchet.MessageKeyCacheState
-import com.ticeapp.androiddoubleratchet.SessionState
+import com.ticeapp.androiddoubleratchet.*
 import com.ticeapp.androidx3dh.X3DH
 import com.ticeapp.ticeandroidmodels.*
+import com.ticeapp.ticeandroidmodels.PrivateKey
+import io.jsonwebtoken.Jwts
+import io.jsonwebtoken.io.Encoders
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.Json.Default.parse
+import java.security.KeyPairGenerator
+import java.security.spec.ECGenParameterSpec
+import java.util.*
+import kotlin.collections.HashMap
 
 class CryptoManager(val cryptoStore: CryptoStore?) {
     companion object {
@@ -20,12 +24,15 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
         private const val MAX_SKIP = 100
         private const val MAX_CACHE = 100
         private const val ONE_TIME_PREKEY_COUNT = 100
+        private const val SIGNING_ALGORITHM = "SHA512withECDSA"
     }
 
     private val sodium = LazySodiumAndroid(SodiumAndroid())
     private val handshake = X3DH()
 
     private val doubleRatchets: HashMap<Conversation, DoubleRatchet> = HashMap()
+
+    // Conversation states
 
     @ImplicitReflectionSerializer
     private fun saveConversationState(conversation: Conversation) {
@@ -78,6 +85,20 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
             doubleRatchets[conversation] = doubleRatchet
         }
     }
+
+    // Key generation
+
+    @ExperimentalStdlibApi
+    fun generateSigningKeyPair(): KeyPair {
+        val ecSpec = ECGenParameterSpec("secp521r1")
+        val keyPairGenerator = KeyPairGenerator.getInstance("EC")
+        keyPairGenerator.initialize(ecSpec)
+        val keyPair = keyPairGenerator.generateKeyPair()
+
+        return keyPair.dataKeyPair()
+    }
+
+    // Handshake
 
     fun generateHandshakeKeyMaterial(signer: Signer) {
         val identityKeyPair = handshake.generateIdentityKeyPair()
@@ -171,6 +192,8 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
         cryptoStore.deleteOneTimePrekeyPair(publicOneTimePrekey)
     }
 
+    // Encryption / Decryption
+
     fun encrypt(data: ByteArray): Pair<Ciphertext, SecretKey> {
         val secretKey = sodium.keygen(AEAD.Method.XCHACHA20_POLY1305_IETF)
         val ciphertext = encrypt(data, secretKey)
@@ -229,11 +252,41 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
         return decrypt(encryptedData, secretKey)
     }
 
-    private fun sign(prekey: PublicKey, signer: Signer): Signature {
-        TODO()
+    // Auth signature
+
+    fun generateAuthHeader(signingKey: PrivateKey, userId: UserId): Certificate {
+        val issueDate = Date()
+
+        val calendar = Calendar.getInstance()
+        calendar.time = issueDate
+        calendar.add(Calendar.SECOND, 120)
+        val expirationDate = calendar.time
+
+        val nonce = sodium.nonce(16)
+
+        return Jwts.builder()
+            .setIssuer(userId.toString())
+            .setIssuedAt(issueDate)
+            .setExpiration(expirationDate)
+            .claim("nonce", nonce)
+            .signWith(signingKey.signingKey())
+            .compact()
     }
 
+    // Signing / verifying
+
+    private fun sign(prekey: PublicKey, signer: Signer): Signature {
+        val signingInstance = java.security.Signature.getInstance(SIGNING_ALGORITHM)
+        signingInstance.initSign(signer.privateSigningKey.signingKey())
+        signingInstance.update(prekey)
+        return signingInstance.sign()
+    }
+
+    @ExperimentalStdlibApi
     private fun verify(prekeySignature: Signature, prekey: PublicKey, verificationPublicKey: PublicKey): Boolean {
-        TODO()
+        val verifyingInstance = java.security.Signature.getInstance(SIGNING_ALGORITHM)
+        verifyingInstance.initVerify(verificationPublicKey.verificationKey())
+        verifyingInstance.update(prekey)
+        return verifyingInstance.verify(Base64.decode(prekeySignature, Base64.DEFAULT))
     }
 }
