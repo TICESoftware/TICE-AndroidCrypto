@@ -10,7 +10,9 @@ import com.ticeapp.androidhkdf.deriveHKDFKey
 import com.ticeapp.androidx3dh.X3DH
 import com.ticeapp.ticeandroidmodels.*
 import com.ticeapp.ticeandroidmodels.PrivateKey
+import io.jsonwebtoken.InvalidClaimException
 import io.jsonwebtoken.Jwts
+import io.jsonwebtoken.PrematureJwtException
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
 import java.security.KeyPairGenerator
@@ -139,7 +141,7 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
 
     @ExperimentalStdlibApi
     private fun validate(certificate: Certificate, membership: Membership, issuer: JWTIssuer, publicKey: PublicKey) {
-        Jwts
+        val jwts = Jwts
             .parserBuilder()
             .requireSubject(membership.userId.toString())
             .requireIssuer(issuer.claimString())
@@ -149,6 +151,10 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
             .setSigningKey(publicKey.verificationKey())
             .build()
             .parseClaimsJws(certificate)
+
+        if (jwts.body.issuedAt.after(Date())) {
+            throw PrematureJwtException(jwts.header, jwts.body, "JWT seems to be issued in the future.")
+        }
     }
 
     fun tokenKeyForGroup(groupKey: SecretKey, user: User): TokenKey {
