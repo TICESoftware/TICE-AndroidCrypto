@@ -10,13 +10,14 @@ import com.ticeapp.androidx3dh.X3DH
 import com.ticeapp.ticeandroidmodels.*
 import com.ticeapp.ticeandroidmodels.PrivateKey
 import io.jsonwebtoken.Jwts
-import io.jsonwebtoken.io.Encoders
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
 import java.security.KeyPairGenerator
 import java.security.spec.ECGenParameterSpec
 import java.util.*
 import kotlin.collections.HashMap
+
+typealias JWTId = UUID
 
 class CryptoManager(val cryptoStore: CryptoStore?) {
     companion object {
@@ -25,6 +26,8 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
         private const val MAX_CACHE = 100
         private const val ONE_TIME_PREKEY_COUNT = 100
         private const val SIGNING_ALGORITHM = "SHA512withECDSA"
+        private const val CERTIFICATES_VALID_FOR = 60*60*24*30*6
+        private const val JWT_VALIDATION_LEEWAY = 3
     }
 
     private val sodium = LazySodiumAndroid(SodiumAndroid())
@@ -98,6 +101,52 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
         return keyPair.dataKeyPair()
     }
 
+    // Membership certificates
+
+    fun createUserSignedMembershipCertificate(userId: UserId, groupId: GroupId, admin: Boolean, signerUserId: UserId, signer: Signer): Certificate =
+        createMembershipCertificate(JWTId.randomUUID(), userId, groupId, admin, JWTIssuer.User(signerUserId), signer.privateSigningKey)
+
+    private fun createMembershipCertificate(jwtId: JWTId, userId: UserId, groupId: GroupId, admin: Boolean, issuer: JWTIssuer, signingKey: PrivateKey): Certificate {
+        val issueDate = Date()
+
+        val calendar = Calendar.getInstance()
+        calendar.time = issueDate
+        calendar.add(Calendar.SECOND, CERTIFICATES_VALID_FOR)
+        val expirationDate = calendar.time
+
+        val nonce = sodium.nonce(16)
+
+        return Jwts.builder()
+            .setId(jwtId.toString())
+            .setIssuer(issuer.claimString)
+            .setSubject(userId.toString())
+            .setIssuedAt(issueDate)
+            .setExpiration(expirationDate)
+            .claim("groupId", groupId.toString())
+            .claim("admin", admin)
+            .signWith(signingKey.signingKey())
+            .compact()
+    }
+
+    @ExperimentalStdlibApi
+    fun validateUserSignedMembershipCertificate(certificate: Certificate, membership: Membership, issuer: User) = validate(certificate, membership, JWTIssuer.User(issuer.userId), issuer.publicSigningKey)
+
+    @ExperimentalStdlibApi
+    fun validateServerSignedMembershipCertificate(certificate: Certificate, membership: Membership, publicKey: PublicKey) = validate(certificate, membership, JWTIssuer.Server, publicKey)
+
+    @ExperimentalStdlibApi
+    private fun validate(certificate: Certificate, membership: Membership, issuer: JWTIssuer, publicKey: PublicKey) {
+        Jwts
+            .parserBuilder()
+            .requireSubject(membership.userId.toString())
+            .requireIssuer(issuer.claimString)
+            .require("groupId", membership.groupId.toString())
+            .require("admin", membership.admin)
+            .setAllowedClockSkewSeconds(JWT_VALIDATION_LEEWAY.toLong())
+            .setSigningKey(publicKey.verificationKey())
+            .build()
+            .parseClaimsJws(certificate)
+    }
     // Handshake
 
     fun generateHandshakeKeyMaterial(signer: Signer) {
