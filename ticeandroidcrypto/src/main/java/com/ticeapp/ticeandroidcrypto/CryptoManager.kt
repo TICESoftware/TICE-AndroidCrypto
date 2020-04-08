@@ -38,6 +38,7 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
 
     // Conversation states
 
+    @UnstableDefault
     @ImplicitReflectionSerializer
     private fun saveConversationState(conversation: Conversation) {
         val sessionState = doubleRatchets[conversation]?.sessionState ?: return
@@ -61,6 +62,7 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
         cryptoStore?.saveConversationState(conversationState)
     }
 
+    @UnstableDefault
     @ExperimentalStdlibApi
     @ImplicitReflectionSerializer
     fun reloadConversationStates() {
@@ -101,7 +103,7 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
 
         return keyPair.dataKeyPair()
     }
-    
+
     fun generateGroupKey(): SecretKey = sodium.keygen(AEAD.Method.XCHACHA20_POLY1305_IETF).dataKey()
 
     // Membership certificates
@@ -117,11 +119,9 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
         calendar.add(Calendar.SECOND, CERTIFICATES_VALID_FOR)
         val expirationDate = calendar.time
 
-        val nonce = sodium.nonce(16)
-
         return Jwts.builder()
             .setId(jwtId.toString())
-            .setIssuer(issuer.claimString)
+            .setIssuer(issuer.claimString())
             .setSubject(userId.toString())
             .setIssuedAt(issueDate)
             .setExpiration(expirationDate)
@@ -142,7 +142,7 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
         Jwts
             .parserBuilder()
             .requireSubject(membership.userId.toString())
-            .requireIssuer(issuer.claimString)
+            .requireIssuer(issuer.claimString())
             .require("groupId", membership.groupId.toString())
             .require("admin", membership.admin)
             .setAllowedClockSkewSeconds(JWT_VALIDATION_LEEWAY.toLong())
@@ -195,6 +195,7 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
         return UserPublicKeys(publicSigningKey, identityKeyPair.publicKey, prekeyPair.publicKey, prekeySignature, oneTimePrekeyPairs.map(KeyPair::publicKey))
     }
 
+    @UnstableDefault
     @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
     fun initConversation(
@@ -231,6 +232,7 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
         return ConversationInvitation(identityKeyPair.publicKey, keyAgreementInitiation.ephemeralPublicKey.dataKey(), remoteOneTimePrekey)
     }
 
+    @UnstableDefault
     @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
     fun processConversationInvitation(conversationInvitation: ConversationInvitation, userId: UserId, conversationId: ConversationId) {
@@ -281,6 +283,7 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
         return plaintext
     }
 
+    @UnstableDefault
     @ExperimentalStdlibApi
     @ImplicitReflectionSerializer
     fun encrypt(data: ByteArray, userId: UserId, conversationId: ConversationId): Ciphertext {
@@ -293,6 +296,7 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
         return Json.stringify(message).encodeToByteArray()
     }
 
+    @UnstableDefault
     @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
     private fun decrypt(encryptedMessage: Message, userId: UserId, conversationId: ConversationId): ByteArray {
@@ -306,6 +310,7 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
         return plaintext
     }
 
+    @UnstableDefault
     @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
     fun decrypt(encryptedData: Ciphertext, encryptedSecretKey: Ciphertext, userId: UserId, conversationId: ConversationId): ByteArray {
