@@ -2,20 +2,20 @@ package com.ticeapp.ticeandroidcryptoapp
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import com.ticeapp.ticeandroidcrypto.CryptoManager
-import com.ticeapp.ticeandroidcrypto.JWTId
-import com.ticeapp.ticeandroidcrypto.Signer
-import com.ticeapp.ticeandroidcrypto.signingKey
+import com.ticeapp.ticeandroidcrypto.*
 import com.ticeapp.ticeandroidmodels.*
+import kotlinx.serialization.*
 import io.jsonwebtoken.*
 import io.jsonwebtoken.security.SignatureException
 import java.util.*
+import kotlin.collections.HashMap
 
 class MainActivity : AppCompatActivity() {
 
     val groupId = GroupId.fromString("E621E1F8-C36C-495A-93FC-0C247A3E6E5F")
     val userId = UserId.fromString("F621E1F8-C36C-495A-93FC-0C247A3E6E5F")
 
+    @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,6 +24,7 @@ class MainActivity : AppCompatActivity() {
         testLibrary()
     }
 
+    @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
     private fun testLibrary() {
         testUserSignedMembershipCertificate()
@@ -32,6 +33,7 @@ class MainActivity : AppCompatActivity() {
         testValidateExpiredCertificate()
         testValidateCertificateIssuedInFuture()
         testValidateCertificateInvalidSignature()
+        testInitializeConversation()
     }
 
     @ExperimentalStdlibApi
@@ -226,6 +228,42 @@ class MainActivity : AppCompatActivity() {
             throw Exception("Test failed")
         } catch (e: SignatureException) { }
     }
+
+    @OptIn(UnstableDefault::class)
+    @ImplicitReflectionSerializer
+    @ExperimentalStdlibApi
+    private fun testInitializeConversation() {
+        val cryptoManager = CryptoManager(TestCryptoStore())
+        val keyPair = cryptoManager.generateSigningKeyPair()
+        val testUser = TestUser(userId, keyPair.privateKey, keyPair.publicKey, null)
+
+        val publicKeyMaterial = cryptoManager.generateHandshakeKeyMaterial(testUser, testUser.publicSigningKey)
+
+        // Publish public key material...
+
+        val keyPairBob = cryptoManager.generateSigningKeyPair()
+        val bob = TestUser(UserId.randomUUID(), keyPairBob.privateKey, keyPairBob.publicKey, null)
+        val bobsCryptoManager = CryptoManager(TestCryptoStore())
+        bobsCryptoManager.generateHandshakeKeyMaterial(bob, bob.publicSigningKey)
+
+        // Bob gets prekey bundle and remote verification key from server
+
+        val conversationId = ConversationId.randomUUID()
+        val invitation = bobsCryptoManager.initConversation(userId, conversationId, publicKeyMaterial.identityKey, publicKeyMaterial.signedPrekey, publicKeyMaterial.prekeySignature, publicKeyMaterial.oneTimePrekeys.first(), testUser.publicSigningKey)
+
+        // Invitation is transmitted ...
+
+        cryptoManager.processConversationInvitation(invitation, bob.userId, conversationId)
+
+        val firstMessagePayload = "Hello!".encodeToByteArray()
+        val firstMessage = bobsCryptoManager.encrypt(firstMessagePayload, userId, conversationId)
+
+        val plaintextData = cryptoManager.decrypt(firstMessage, bob.userId, conversationId)
+
+        if (!firstMessagePayload.contentEquals(plaintextData)) {
+            throw Exception("Test failed")
+        }
+    }
 }
 
 class TestUser(
@@ -234,3 +272,51 @@ class TestUser(
     publicSigningKey: PublicKey,
     publicName: String?
 ) : User(userId, publicSigningKey, publicName), Signer
+
+class TestCryptoStore: CryptoStore {
+    var identityKeyPair: KeyPair? = null
+    var prekeyPair: KeyPair? = null
+    var oneTimePrekeys: HashMap<PublicKey, PrivateKey> = HashMap()
+
+    override fun saveIdentityKeyPair(keyPair: KeyPair) {
+        identityKeyPair = keyPair
+    }
+
+    override fun savePrekeyPair(keyPair: KeyPair, signature: Signature) {
+        prekeyPair = keyPair
+    }
+
+    override fun saveOneTimePrekeyPairs(keyPairs: List<KeyPair>) {
+        for (keyPair in keyPairs) {
+            oneTimePrekeys[keyPair.publicKey] = keyPair.privateKey
+        }
+    }
+
+    override fun loadIdentityKeyPair(): KeyPair = identityKeyPair!!
+
+    override fun loadPrekeyPair(): KeyPair = prekeyPair!!
+
+    override fun loadPrekeySignature(): Signature {
+        throw Exception("Not implemented")
+    }
+
+    override fun loadPrivateOneTimePrekey(publicKey: PublicKey): PrivateKey = oneTimePrekeys[publicKey]!!
+
+    override fun deleteOneTimePrekeyPair(publicKey: PublicKey) {
+    }
+
+    override fun saveConversationState(conversationState: ConversationState) {
+    }
+
+    override fun loadConversationState(
+        userId: UserId,
+        conversationId: ConversationId
+    ): ConversationState? {
+        throw Exception("Not implemented")
+    }
+
+    override fun loadConversationStates(): List<ConversationState> {
+        throw Exception("Not implemented")
+    }
+
+}
