@@ -6,6 +6,7 @@ import com.goterl.lazycode.lazysodium.SodiumAndroid
 import com.goterl.lazycode.lazysodium.interfaces.AEAD
 import com.goterl.lazycode.lazysodium.utils.Key
 import com.ticeapp.androiddoubleratchet.*
+import com.ticeapp.androidhkdf.deriveHKDFKey
 import com.ticeapp.androidx3dh.X3DH
 import com.ticeapp.ticeandroidmodels.*
 import com.ticeapp.ticeandroidmodels.PrivateKey
@@ -100,6 +101,8 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
 
         return keyPair.dataKeyPair()
     }
+    
+    fun generateGroupKey(): SecretKey = sodium.keygen(AEAD.Method.XCHACHA20_POLY1305_IETF).dataKey()
 
     // Membership certificates
 
@@ -147,6 +150,14 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
             .build()
             .parseClaimsJws(certificate)
     }
+
+    fun tokenKeyForGroup(groupKey: SecretKey, user: User): TokenKey {
+        var inputKeyingMaterial = groupKey.clone()
+        inputKeyingMaterial += user.publicSigningKey.clone()
+
+        return deriveHKDFKey(inputKeyingMaterial, L = 32)
+    }
+
     // Handshake
 
     fun generateHandshakeKeyMaterial(signer: Signer) {
