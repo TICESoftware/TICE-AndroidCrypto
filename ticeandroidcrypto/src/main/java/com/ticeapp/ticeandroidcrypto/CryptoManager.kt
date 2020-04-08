@@ -160,9 +160,11 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
 
     // Handshake
 
-    fun generateHandshakeKeyMaterial(signer: Signer) {
+    fun generateHandshakeKeyMaterial(signer: Signer): UserPublicKeys {
         val identityKeyPair = handshake.generateIdentityKeyPair()
         cryptoStore?.saveIdentityKeyPair(identityKeyPair.dataKeyPair())
+
+        return renewHandshakeKeyMaterial(signer, renewSignedPrekey = true)
     }
 
     fun renewHandshakeKeyMaterial(signer: Signer, renewSignedPrekey: Boolean): UserPublicKeys {
