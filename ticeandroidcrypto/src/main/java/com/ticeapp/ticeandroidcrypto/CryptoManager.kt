@@ -10,7 +10,6 @@ import com.ticeapp.androidhkdf.deriveHKDFKey
 import com.ticeapp.androidx3dh.X3DH
 import com.ticeapp.ticeandroidmodels.*
 import com.ticeapp.ticeandroidmodels.PrivateKey
-import io.jsonwebtoken.InvalidClaimException
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.PrematureJwtException
 import kotlinx.serialization.*
@@ -166,14 +165,14 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
 
     // Handshake
 
-    fun generateHandshakeKeyMaterial(signer: Signer): UserPublicKeys {
+    fun generateHandshakeKeyMaterial(signer: Signer, publicSigningKey: PublicKey): UserPublicKeys {
         val identityKeyPair = handshake.generateIdentityKeyPair()
         cryptoStore?.saveIdentityKeyPair(identityKeyPair.dataKeyPair())
 
-        return renewHandshakeKeyMaterial(signer, renewSignedPrekey = true)
+        return renewHandshakeKeyMaterial(signer, publicSigningKey, renewSignedPrekey = true)
     }
 
-    fun renewHandshakeKeyMaterial(signer: Signer, renewSignedPrekey: Boolean): UserPublicKeys {
+    fun renewHandshakeKeyMaterial(signer: Signer, publicSigningKey: PublicKey, renewSignedPrekey: Boolean): UserPublicKeys {
         val cryptoStore = cryptoStore ?: throw CryptoManagerError.CryptoStoreNotFoundException()
 
         val identityKeyPair = cryptoStore.loadIdentityKeyPair()
@@ -194,9 +193,6 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
 
         val oneTimePrekeyPairs = handshake.generateOneTimePrekeyPairs(ONE_TIME_PREKEY_COUNT).map(com.goterl.lazycode.lazysodium.utils.KeyPair::dataKeyPair)
         cryptoStore.saveOneTimePrekeyPairs(oneTimePrekeyPairs)
-
-        // TODO: Signing key
-        val publicSigningKey = ByteArray(0)
 
         return UserPublicKeys(publicSigningKey, identityKeyPair.publicKey, prekeyPair.publicKey, prekeySignature, oneTimePrekeyPairs.map(KeyPair::publicKey))
     }
@@ -299,13 +295,14 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
         val message = doubleRatchet.encrypt(data)
         saveConversationState(conversation)
 
-        return Json.stringify(message).encodeToByteArray()
+        return Json.stringify(MessageSerializer, message).encodeToByteArray()
     }
 
     @UnstableDefault
     @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
-    private fun decrypt(encryptedMessage: Message, userId: UserId, conversationId: ConversationId): ByteArray {
+    fun decrypt(encryptedMessage: Ciphertext, userId: UserId, conversationId: ConversationId): ByteArray {
+        val encryptedMessage = Json.parse(MessageSerializer, encryptedMessage.decodeToString())
         val conversation = Conversation(userId, conversationId)
         val doubleRatchet = doubleRatchets[conversation] ?: throw CryptoManagerError.ConversationNotInitializedException()
 
@@ -320,8 +317,7 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
     @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
     fun decrypt(encryptedData: Ciphertext, encryptedSecretKey: Ciphertext, userId: UserId, conversationId: ConversationId): ByteArray {
-        val encryptedSecretKeyMessage = Json.parse<Message>(encryptedSecretKey.decodeToString())
-        val secretKey = decrypt(encryptedSecretKeyMessage, userId, conversationId)
+        val secretKey = decrypt(encryptedSecretKey, userId, conversationId)
         return decrypt(encryptedData, secretKey)
     }
 
@@ -360,6 +356,6 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
         val verifyingInstance = java.security.Signature.getInstance(SIGNING_ALGORITHM)
         verifyingInstance.initVerify(verificationPublicKey.verificationKey())
         verifyingInstance.update(prekey)
-        return verifyingInstance.verify(Base64.decode(prekeySignature, Base64.DEFAULT))
+        return verifyingInstance.verify(prekeySignature)
     }
 }
