@@ -8,8 +8,6 @@ import com.goterl.lazycode.lazysodium.utils.Key
 import com.ticeapp.androiddoubleratchet.*
 import com.ticeapp.androidhkdf.deriveHKDFKey
 import com.ticeapp.androidx3dh.X3DH
-import com.ticeapp.ticeandroidmodels.*
-import com.ticeapp.ticeandroidmodels.PrivateKey
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.PrematureJwtException
 import kotlinx.serialization.*
@@ -21,7 +19,7 @@ import kotlin.collections.HashMap
 
 typealias JWTId = UUID
 
-class CryptoManager(val cryptoStore: CryptoStore?) {
+open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
     companion object {
         private const val INFO = "TICE"
         private const val MAX_SKIP = 100
@@ -33,7 +31,8 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
     }
 
     private val sodium = LazySodiumAndroid(SodiumAndroid())
-    private val handshake = X3DH()
+    private val handshake: X3DH
+        get() = X3DH()
 
     private val doubleRatchets: HashMap<Conversation, DoubleRatchet> = HashMap()
 
@@ -66,7 +65,7 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
     @UnstableDefault
     @ExperimentalStdlibApi
     @ImplicitReflectionSerializer
-    fun reloadConversationStates() {
+    override fun reloadConversationStates() {
         val cryptoStore = cryptoStore ?: throw CryptoManagerError.CryptoStoreNotFoundException()
         for (conversationState in cryptoStore.loadConversationStates()) {
             val rootChainKeyPair = KeyPair(conversationState.rootChainPrivateKey, conversationState.rootChainPublicKey).cryptoKeyPair()
@@ -96,7 +95,7 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
     // Key generation
 
     @ExperimentalStdlibApi
-    fun generateSigningKeyPair(): KeyPair {
+    override fun generateSigningKeyPair(): KeyPair {
         val ecSpec = ECGenParameterSpec("secp521r1")
         val keyPairGenerator = KeyPairGenerator.getInstance("EC")
         keyPairGenerator.initialize(ecSpec)
@@ -105,11 +104,11 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
         return keyPair.dataKeyPair()
     }
 
-    fun generateGroupKey(): SecretKey = sodium.keygen(AEAD.Method.XCHACHA20_POLY1305_IETF).dataKey()
+    override fun generateGroupKey(): SecretKey = sodium.keygen(AEAD.Method.XCHACHA20_POLY1305_IETF).dataKey()
 
     // Membership certificates
 
-    fun createUserSignedMembershipCertificate(userId: UserId, groupId: GroupId, admin: Boolean, signerUserId: UserId, signer: Signer): Certificate =
+    override fun createUserSignedMembershipCertificate(userId: UserId, groupId: GroupId, admin: Boolean, signerUserId: UserId, signer: Signer): Certificate =
         createMembershipCertificate(JWTId.randomUUID(), userId, groupId, admin, JWTIssuer.User(signerUserId), signer.privateSigningKey)
 
     private fun createMembershipCertificate(jwtId: JWTId, userId: UserId, groupId: GroupId, admin: Boolean, issuer: JWTIssuer, signingKey: PrivateKey): Certificate {
@@ -133,10 +132,10 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
     }
 
     @ExperimentalStdlibApi
-    fun validateUserSignedMembershipCertificate(certificate: Certificate, membership: Membership, issuer: User) = validate(certificate, membership, JWTIssuer.User(issuer.userId), issuer.publicSigningKey)
+    override fun validateUserSignedMembershipCertificate(certificate: Certificate, membership: Membership, issuer: UserType) = validate(certificate, membership, JWTIssuer.User(issuer.userId), issuer.publicSigningKey)
 
     @ExperimentalStdlibApi
-    fun validateServerSignedMembershipCertificate(certificate: Certificate, membership: Membership, publicKey: PublicKey) = validate(certificate, membership, JWTIssuer.Server, publicKey)
+    override fun validateServerSignedMembershipCertificate(certificate: Certificate, membership: Membership, publicKey: PublicKey) = validate(certificate, membership, JWTIssuer.Server, publicKey)
 
     @ExperimentalStdlibApi
     private fun validate(certificate: Certificate, membership: Membership, issuer: JWTIssuer, publicKey: PublicKey) {
@@ -156,7 +155,7 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
         }
     }
 
-    fun tokenKeyForGroup(groupKey: SecretKey, user: User): TokenKey {
+    override fun tokenKeyForGroup(groupKey: SecretKey, user: UserType): SecretKey {
         var inputKeyingMaterial = groupKey.clone()
         inputKeyingMaterial += user.publicSigningKey.clone()
 
@@ -165,14 +164,14 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
 
     // Handshake
 
-    fun generateHandshakeKeyMaterial(signer: Signer, publicSigningKey: PublicKey): UserPublicKeys {
+    override fun generateHandshakeKeyMaterial(signer: Signer, publicSigningKey: PublicKey): UserPublicKeys {
         val identityKeyPair = handshake.generateIdentityKeyPair()
         cryptoStore?.saveIdentityKeyPair(identityKeyPair.dataKeyPair())
 
         return renewHandshakeKeyMaterial(signer, publicSigningKey, renewSignedPrekey = true)
     }
 
-    fun renewHandshakeKeyMaterial(signer: Signer, publicSigningKey: PublicKey, renewSignedPrekey: Boolean): UserPublicKeys {
+    override fun renewHandshakeKeyMaterial(signer: Signer, publicSigningKey: PublicKey, renewSignedPrekey: Boolean): UserPublicKeys {
         val cryptoStore = cryptoStore ?: throw CryptoManagerError.CryptoStoreNotFoundException()
 
         val identityKeyPair = cryptoStore.loadIdentityKeyPair()
@@ -200,7 +199,7 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
     @UnstableDefault
     @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
-    fun initConversation(
+    override fun initConversation(
         userId: UserId,
         conversationId: ConversationId,
         remoteIdentityKey: PublicKey,
@@ -237,7 +236,7 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
     @UnstableDefault
     @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
-    fun processConversationInvitation(conversationInvitation: ConversationInvitation, userId: UserId, conversationId: ConversationId) {
+    override fun processConversationInvitation(conversationInvitation: ConversationInvitation, userId: UserId, conversationId: ConversationId) {
         val cryptoStore = cryptoStore ?: throw CryptoManagerError.CryptoStoreNotFoundException()
 
         val publicOneTimePrekey = conversationInvitation.usedOneTimePrekey ?: throw CryptoManagerError.OneTimePrekeyMissingException()
@@ -260,21 +259,21 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
 
     // Encryption / Decryption
 
-    fun encrypt(data: ByteArray): Pair<Ciphertext, SecretKey> {
+    override fun encrypt(data: ByteArray): Pair<Ciphertext, SecretKey> {
         val secretKey = sodium.keygen(AEAD.Method.XCHACHA20_POLY1305_IETF)
-        val ciphertext = encrypt(data, secretKey)
+        val ciphertext = encrypt(data, secretKey.dataKey())
         return Pair(ciphertext, secretKey.dataKey())
     }
 
-    fun encrypt(data: ByteArray, secretKey: Key): Ciphertext {
+    override fun encrypt(data: ByteArray, secretKey: SecretKey): Ciphertext {
         val nonce = sodium.nonce(AEAD.XCHACHA20POLY1305_IETF_NPUBBYTES)
         val cipher = ByteArray(data.size + AEAD.XCHACHA20POLY1305_IETF_ABYTES)
-        sodium.cryptoAeadXChaCha20Poly1305IetfEncrypt(cipher, null, data, data.size.toLong(), null, 0, null, nonce, secretKey.asBytes)
+        sodium.cryptoAeadXChaCha20Poly1305IetfEncrypt(cipher, null, data, data.size.toLong(), null, 0, null, nonce, secretKey)
 
         return cipher
     }
 
-    fun decrypt(encryptedData: ByteArray, secretKey: SecretKey): ByteArray {
+    override fun decrypt(encryptedData: ByteArray, secretKey: SecretKey): ByteArray {
         val nonce = encryptedData.sliceArray(0 until AEAD.XCHACHA20POLY1305_IETF_NPUBBYTES)
         val cipher = encryptedData.sliceArray(AEAD.XCHACHA20POLY1305_IETF_NPUBBYTES until encryptedData.size)
 
@@ -288,7 +287,7 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
     @UnstableDefault
     @ExperimentalStdlibApi
     @ImplicitReflectionSerializer
-    fun encrypt(data: ByteArray, userId: UserId, conversationId: ConversationId): Ciphertext {
+    override fun encrypt(data: ByteArray, userId: UserId, conversationId: ConversationId): Ciphertext {
         val conversation = Conversation(userId, conversationId)
         val doubleRatchet = doubleRatchets[conversation] ?: throw CryptoManagerError.ConversationNotInitializedException()
 
@@ -302,11 +301,11 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
     @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
     fun decrypt(encryptedMessage: Ciphertext, userId: UserId, conversationId: ConversationId): ByteArray {
-        val encryptedMessage = Json.parse(MessageSerializer, encryptedMessage.decodeToString())
+        val encryptedRawMessage = Json.parse(MessageSerializer, encryptedMessage.decodeToString())
         val conversation = Conversation(userId, conversationId)
         val doubleRatchet = doubleRatchets[conversation] ?: throw CryptoManagerError.ConversationNotInitializedException()
 
-        val plaintext = doubleRatchet.decrypt(encryptedMessage)
+        val plaintext = doubleRatchet.decrypt(encryptedRawMessage)
 
         saveConversationState(conversation)
 
@@ -316,14 +315,14 @@ class CryptoManager(val cryptoStore: CryptoStore?) {
     @UnstableDefault
     @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
-    fun decrypt(encryptedData: Ciphertext, encryptedSecretKey: Ciphertext, userId: UserId, conversationId: ConversationId): ByteArray {
+    override fun decrypt(encryptedData: Ciphertext, encryptedSecretKey: Ciphertext, userId: UserId, conversationId: ConversationId): ByteArray {
         val secretKey = decrypt(encryptedSecretKey, userId, conversationId)
         return decrypt(encryptedData, secretKey)
     }
 
     // Auth signature
 
-    fun generateAuthHeader(signingKey: PrivateKey, userId: UserId): Certificate {
+    override fun generateAuthHeader(signingKey: PrivateKey, userId: UserId): Certificate {
         val issueDate = Date()
 
         val calendar = Calendar.getInstance()

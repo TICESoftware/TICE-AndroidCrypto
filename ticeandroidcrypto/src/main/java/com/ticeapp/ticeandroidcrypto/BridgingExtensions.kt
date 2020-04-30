@@ -2,8 +2,6 @@ package com.ticeapp.ticeandroidcrypto
 
 import android.util.Base64
 import com.goterl.lazycode.lazysodium.utils.Key
-import com.ticeapp.ticeandroidmodels.PrivateKey
-import com.ticeapp.ticeandroidmodels.PublicKey
 import java.security.KeyFactory
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
@@ -11,10 +9,9 @@ import java.security.PrivateKey as SigningKey
 import java.security.PublicKey as VerificationKey
 import java.security.KeyPair as SecurityKeyPair
 import com.goterl.lazycode.lazysodium.utils.KeyPair as CryptoKeyPair
-import com.ticeapp.ticeandroidmodels.KeyPair as ModelsKeyPair
 
-fun CryptoKeyPair.dataKeyPair(): ModelsKeyPair = ModelsKeyPair(secretKey.asBytes, publicKey.asBytes)
-fun ModelsKeyPair.cryptoKeyPair(): CryptoKeyPair = CryptoKeyPair(Key.fromBytes(publicKey), Key.fromBytes(privateKey))
+fun CryptoKeyPair.dataKeyPair(): KeyPair = KeyPair(secretKey.asBytes, publicKey.asBytes)
+fun KeyPair.cryptoKeyPair(): CryptoKeyPair = CryptoKeyPair(Key.fromBytes(publicKey), Key.fromBytes(privateKey))
 
 fun Key.dataKey(): ByteArray = asBytes
 fun ByteArray.cryptoKey(): Key = Key.fromBytes(this)
@@ -37,4 +34,4 @@ fun PrivateKey.signingKey(): SigningKey = KeyFactory.getInstance("EC").generateP
     return publicKeyString.encodeToByteArray()
 }
 
-@ExperimentalStdlibApi fun SecurityKeyPair.dataKeyPair(): ModelsKeyPair = ModelsKeyPair(private.encoded, public.dataKey())
+@ExperimentalStdlibApi fun SecurityKeyPair.dataKeyPair(): KeyPair = KeyPair(private.encoded, public.dataKey())

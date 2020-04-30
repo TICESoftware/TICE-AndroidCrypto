@@ -3,7 +3,6 @@ package com.ticeapp.ticeandroidcryptoapp
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import com.ticeapp.ticeandroidcrypto.*
-import com.ticeapp.ticeandroidmodels.*
 import kotlinx.serialization.*
 import io.jsonwebtoken.*
 import io.jsonwebtoken.security.SignatureException
@@ -267,11 +266,11 @@ class MainActivity : AppCompatActivity() {
 }
 
 class TestUser(
-    userId: UserId,
+    override val userId: UserId,
     override val privateSigningKey: PrivateKey,
-    publicSigningKey: PublicKey,
-    publicName: String?
-) : User(userId, publicSigningKey, publicName), Signer
+    override var publicSigningKey: PublicKey,
+    override var publicName: String?
+) : UserType, Signer
 
 class TestCryptoStore: CryptoStore {
     var identityKeyPair: KeyPair? = null

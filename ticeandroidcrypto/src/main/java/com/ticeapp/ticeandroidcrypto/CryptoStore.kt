@@ -1,7 +1,5 @@
 package com.ticeapp.ticeandroidcrypto
 
-import com.ticeapp.ticeandroidmodels.*
-
 interface CryptoStore {
     fun saveIdentityKeyPair(keyPair: KeyPair)
     fun savePrekeyPair(keyPair: KeyPair, signature: Signature)
