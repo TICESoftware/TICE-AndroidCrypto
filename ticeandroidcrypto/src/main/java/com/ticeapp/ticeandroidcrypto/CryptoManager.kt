@@ -270,14 +270,14 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
         val cipher = ByteArray(data.size + AEAD.XCHACHA20POLY1305_IETF_ABYTES)
         sodium.cryptoAeadXChaCha20Poly1305IetfEncrypt(cipher, null, data, data.size.toLong(), null, 0, null, nonce, secretKey)
 
-        return cipher
+        return nonce + cipher
     }
 
     override fun decrypt(encryptedData: ByteArray, secretKey: SecretKey): ByteArray {
         val nonce = encryptedData.sliceArray(0 until AEAD.XCHACHA20POLY1305_IETF_NPUBBYTES)
         val cipher = encryptedData.sliceArray(AEAD.XCHACHA20POLY1305_IETF_NPUBBYTES until encryptedData.size)
 
-        val plaintextLength = encryptedData.size - AEAD.XCHACHA20POLY1305_IETF_ABYTES
+        val plaintextLength = cipher.size - AEAD.XCHACHA20POLY1305_IETF_ABYTES
         val plaintext = ByteArray(plaintextLength)
         sodium.cryptoAeadXChaCha20Poly1305IetfDecrypt(plaintext, null, null, cipher, cipher.size.toLong(), null, 0, nonce, secretKey)
 

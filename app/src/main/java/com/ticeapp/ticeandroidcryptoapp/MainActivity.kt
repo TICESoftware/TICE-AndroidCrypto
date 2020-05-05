@@ -33,6 +33,8 @@ class MainActivity : AppCompatActivity() {
         testValidateCertificateIssuedInFuture()
         testValidateCertificateInvalidSignature()
         testInitializeConversation()
+        testSymmetricEncryptionFixKey()
+        testSymmetricEncryptionGeneratedKey()
     }
 
     @ExperimentalStdlibApi
@@ -260,6 +262,35 @@ class MainActivity : AppCompatActivity() {
         val plaintextData = cryptoManager.decrypt(firstMessage, bob.userId, conversationId)
 
         if (!firstMessagePayload.contentEquals(plaintextData)) {
+            throw Exception("Test failed")
+        }
+    }
+
+    @ExperimentalStdlibApi
+    private fun testSymmetricEncryptionFixKey() {
+        val cryptoManager = CryptoManager(null)
+        val secretKey = cryptoManager.generateGroupKey()
+
+        val plaintext = "Plaintext".encodeToByteArray()
+        val ciphertext = cryptoManager.encrypt(plaintext, secretKey)
+
+        val decrypted = cryptoManager.decrypt(ciphertext, secretKey)
+
+        if (!decrypted.contentEquals(plaintext)) {
+            throw Exception("Test failed")
+        }
+    }
+
+    @ExperimentalStdlibApi
+    private fun testSymmetricEncryptionGeneratedKey() {
+        val cryptoManager = CryptoManager(null)
+
+        val plaintext = "Plaintext".encodeToByteArray()
+        val result = cryptoManager.encrypt(plaintext)
+
+        val decrypted = cryptoManager.decrypt(result.first, result.second)
+
+        if (!decrypted.contentEquals(plaintext)) {
             throw Exception("Test failed")
         }
     }
