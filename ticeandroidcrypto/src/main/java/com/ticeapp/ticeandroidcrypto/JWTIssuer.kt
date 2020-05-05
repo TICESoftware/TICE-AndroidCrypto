@@ -6,6 +6,6 @@ internal sealed class JWTIssuer {
 
     fun claimString(): String = when(this) {
         Server -> "server"
-        is User -> this.userId.toString()
+        is User -> this.userId.uuidString()
     }
 }

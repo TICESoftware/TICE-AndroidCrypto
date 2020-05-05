@@ -120,12 +120,12 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
         val expirationDate = calendar.time
 
         return Jwts.builder()
-            .setId(jwtId.toString())
+            .setId(jwtId.uuidString())
             .setIssuer(issuer.claimString())
-            .setSubject(userId.toString())
+            .setSubject(userId.uuidString())
             .setIssuedAt(issueDate)
             .setExpiration(expirationDate)
-            .claim("groupId", groupId.toString())
+            .claim("groupId", groupId.uuidString())
             .claim("admin", admin)
             .signWith(signingKey.signingKey())
             .compact()
@@ -141,9 +141,9 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
     private fun validate(certificate: Certificate, membership: Membership, issuer: JWTIssuer, publicKey: PublicKey) {
         val jwts = Jwts
             .parserBuilder()
-            .requireSubject(membership.userId.toString())
+            .requireSubject(membership.userId.uuidString())
             .requireIssuer(issuer.claimString())
-            .require("groupId", membership.groupId.toString())
+            .require("groupId", membership.groupId.uuidString())
             .require("admin", membership.admin)
             .setAllowedClockSkewSeconds(JWT_VALIDATION_LEEWAY.toLong())
             .setSigningKey(publicKey.verificationKey())
@@ -333,7 +333,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
         val nonce = sodium.nonce(16)
 
         return Jwts.builder()
-            .setIssuer(userId.toString())
+            .setIssuer(userId.uuidString())
             .setIssuedAt(issueDate)
             .setExpiration(expirationDate)
             .claim("nonce", nonce)
