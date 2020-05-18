@@ -250,7 +250,16 @@ class MainActivity : AppCompatActivity() {
         // Bob gets prekey bundle and remote verification key from server
 
         val conversationId = ConversationId.randomUUID()
+
+        if (bobsCryptoManager.conversationInitialized(userId, conversationId)) {
+            throw Exception("Test failed")
+        }
+
         val invitation = bobsCryptoManager.initConversation(userId, conversationId, publicKeyMaterial.identityKey, publicKeyMaterial.signedPrekey, publicKeyMaterial.prekeySignature, publicKeyMaterial.oneTimePrekeys.first(), testUser.publicSigningKey)
+
+        if (!bobsCryptoManager.conversationInitialized(userId, conversationId)) {
+            throw Exception("Test failed")
+        }
 
         // Invitation is transmitted ...
 

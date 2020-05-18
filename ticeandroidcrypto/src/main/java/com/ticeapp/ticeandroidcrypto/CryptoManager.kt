@@ -196,6 +196,11 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
         return UserPublicKeys(publicSigningKey, identityKeyPair.publicKey, prekeyPair.publicKey, prekeySignature, oneTimePrekeyPairs.map(KeyPair::publicKey))
     }
 
+    override fun conversationInitialized(userId: UserId, conversationId: ConversationId): Boolean {
+        val conversation = Conversation(userId, conversationId)
+        return doubleRatchets.containsKey(conversation)
+    }
+
     @UnstableDefault
     @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
