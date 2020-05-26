@@ -201,6 +201,13 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
         return doubleRatchets.containsKey(conversation)
     }
 
+    @OptIn(UnstableDefault::class)
+    @ExperimentalStdlibApi
+    override fun conversationFingerprint(ciphertext: Ciphertext): ConversationFingerprint {
+        val message = Json.parse(MessageSerializer, ciphertext.decodeToString())
+        return Base64.encodeToString(message.header.publicKey.asBytes, Base64.DEFAULT)
+    }
+
     @UnstableDefault
     @ImplicitReflectionSerializer
     @ExperimentalStdlibApi

@@ -25,6 +25,7 @@ interface CryptoManagerType {
     fun renewHandshakeKeyMaterial(signer: Signer, publicSigningKey: PublicKey, renewSignedPrekey: Boolean): UserPublicKeys
 
     fun conversationInitialized(userId: UserId, conversationId: ConversationId): Boolean
+    fun conversationFingerprint(ciphertext: Ciphertext): ConversationFingerprint
     fun initConversation(
         userId: UserId,
         conversationId: ConversationId,
