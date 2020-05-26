@@ -1,19 +1,11 @@
 package com.ticeapp.ticeandroidcrypto
 
-import android.util.Base64
 import com.goterl.lazycode.lazysodium.utils.Key
 import com.ticeapp.androiddoubleratchet.Header
 import com.ticeapp.androiddoubleratchet.KeySerializer
 import com.ticeapp.androiddoubleratchet.Message
 import kotlinx.serialization.*
 import kotlinx.serialization.builtins.ByteArraySerializer
-
-class Base64ByteArraySerializer: KSerializer<ByteArray> {
-    override val descriptor: SerialDescriptor = PrimitiveDescriptor("Base64ByteArray", PrimitiveKind.STRING)
-    override fun serialize(encoder: Encoder, value: ByteArray) = encoder.encodeString(Base64.encodeToString(value, Base64.NO_WRAP))
-    override fun deserialize(decoder: Decoder): ByteArray = Base64.decode(decoder.decodeString(), Base64.NO_WRAP)
-    override fun patch(decoder: Decoder, old: ByteArray): ByteArray = deserialize(decoder)
-}
 
 object HeaderSerializer: KSerializer<Header> {
     @ImplicitReflectionSerializer
@@ -25,7 +17,7 @@ object HeaderSerializer: KSerializer<Header> {
     @ImplicitReflectionSerializer
     override fun serialize(encoder: Encoder, value: Header) {
         val composite = encoder.beginStructure(descriptor)
-        composite.encodeSerializableElement(descriptor, 0, KeySerializer(), value.publicKey)
+        composite.encodeSerializableElement(descriptor, 0, ByteArraySerializer(), value.publicKey.asBytes)
         composite.encodeIntElement(descriptor, 1, value.numberOfMessagesInPreviousSendingChain)
         composite.encodeIntElement(descriptor, 2, value.messageNumber)
         composite.endStructure(descriptor)
@@ -40,7 +32,7 @@ object HeaderSerializer: KSerializer<Header> {
         var messageNumber: Int? = null
         for (i in 0..2) {
             when(composite.decodeElementIndex(descriptor)) {
-                0 -> publicKey = composite.decodeSerializableElement(descriptor, 0, KeySerializer())
+                0 -> publicKey = composite.decodeSerializableElement(descriptor, 0, ByteArraySerializer()).cryptoKey()
                 1 -> numberOfMessagesInPreviousSendingChain = composite.decodeIntElement(descriptor, 1)
                 2 -> messageNumber = composite.decodeIntElement(descriptor, 2)
             }
@@ -64,7 +56,7 @@ object MessageSerializer: KSerializer<Message> {
     override fun serialize(encoder: Encoder, value: Message) {
         val composite = encoder.beginStructure(descriptor)
         composite.encodeSerializableElement(descriptor, 0, HeaderSerializer, value.header)
-        composite.encodeSerializableElement(descriptor, 1, Base64ByteArraySerializer(), value.cipher)
+        composite.encodeSerializableElement(descriptor, 1, ByteArraySerializer(), value.cipher)
         composite.endStructure(descriptor)
     }
 
@@ -77,7 +69,7 @@ object MessageSerializer: KSerializer<Message> {
         for (i in 0..2) {
             when(composite.decodeElementIndex(descriptor)) {
                 0 -> header = composite.decodeSerializableElement(descriptor, 0, HeaderSerializer)
-                1 -> cipher = composite.decodeSerializableElement(descriptor, 1, Base64ByteArraySerializer())
+                1 -> cipher = composite.decodeSerializableElement(descriptor, 1, ByteArraySerializer())
             }
         }
 
