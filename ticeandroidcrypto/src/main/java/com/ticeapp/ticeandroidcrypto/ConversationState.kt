@@ -1,6 +1,6 @@
 package com.ticeapp.ticeandroidcrypto
 
-class ConversationState(
+data class ConversationState(
     val userId: UserId,
     val conversationId: ConversationId,
     val rootKey: SecretKey,
