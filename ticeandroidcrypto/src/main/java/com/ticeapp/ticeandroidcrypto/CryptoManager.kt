@@ -94,6 +94,8 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
 
     // Key generation
 
+    override fun generateDatabaseKey(length: Int): SecretKey = sodium.randomBytesBuf(length)
+
     @ExperimentalStdlibApi
     override fun generateSigningKeyPair(): KeyPair {
         val ecSpec = ECGenParameterSpec("secp521r1")

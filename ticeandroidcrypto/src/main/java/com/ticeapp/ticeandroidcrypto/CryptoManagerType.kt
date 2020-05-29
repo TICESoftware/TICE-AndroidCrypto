@@ -5,6 +5,7 @@ typealias Data = ByteArray
 interface CryptoManagerType {
     fun reloadConversationStates()
 
+    fun generateDatabaseKey(length: Int): SecretKey
     fun generateSigningKeyPair(): KeyPair
     fun generateGroupKey(): SecretKey
 
