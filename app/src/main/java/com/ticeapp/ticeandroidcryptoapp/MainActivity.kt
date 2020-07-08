@@ -35,6 +35,7 @@ class MainActivity : AppCompatActivity() {
         testInitializeConversation()
         testSymmetricEncryptionFixKey()
         testSymmetricEncryptionGeneratedKey()
+        testUserPublicKeysComparison()
     }
 
     @ExperimentalStdlibApi
@@ -300,6 +301,15 @@ class MainActivity : AppCompatActivity() {
         val decrypted = cryptoManager.decrypt(result.first, result.second)
 
         if (!decrypted.contentEquals(plaintext)) {
+            throw Exception("Test failed")
+        }
+    }
+
+    private fun testUserPublicKeysComparison() {
+        val userPublicKeys1 = UserPublicKeys(ByteArray(32), ByteArray(32), ByteArray(32), ByteArray(32), listOf(ByteArray(32)))
+        val userPublicKeys2 = UserPublicKeys(ByteArray(32), ByteArray(32), ByteArray(32), ByteArray(32), listOf(ByteArray(32)))
+
+        if (userPublicKeys1 != userPublicKeys2) {
             throw Exception("Test failed")
         }
     }

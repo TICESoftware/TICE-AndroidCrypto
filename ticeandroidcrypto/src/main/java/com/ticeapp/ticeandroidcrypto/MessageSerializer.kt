@@ -2,10 +2,8 @@ package com.ticeapp.ticeandroidcrypto
 
 import com.goterl.lazycode.lazysodium.utils.Key
 import com.ticeapp.androiddoubleratchet.Header
-import com.ticeapp.androiddoubleratchet.KeySerializer
 import com.ticeapp.androiddoubleratchet.Message
 import kotlinx.serialization.*
-import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.builtins.ListSerializer
 
 class UnsignedByteSerializer: KSerializer<UByte> {
