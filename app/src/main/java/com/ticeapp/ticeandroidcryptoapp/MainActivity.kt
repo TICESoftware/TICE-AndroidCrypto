@@ -6,6 +6,7 @@ import com.ticeapp.ticeandroidcrypto.*
 import kotlinx.serialization.*
 import io.jsonwebtoken.*
 import io.jsonwebtoken.security.SignatureException
+import kotlinx.coroutines.runBlocking
 import java.util.*
 import kotlin.collections.HashMap
 
@@ -32,7 +33,7 @@ class MainActivity : AppCompatActivity() {
         testValidateExpiredCertificate()
         testValidateCertificateIssuedInFuture()
         testValidateCertificateInvalidSignature()
-        testInitializeConversation()
+        runBlocking {  testInitializeConversation() }
         testSymmetricEncryptionFixKey()
         testSymmetricEncryptionGeneratedKey()
         testUserPublicKeysComparison()
@@ -234,7 +235,7 @@ class MainActivity : AppCompatActivity() {
     @OptIn(UnstableDefault::class)
     @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
-    private fun testInitializeConversation() {
+    private suspend fun testInitializeConversation() {
         val cryptoManager = CryptoManager(TestCryptoStore())
         val keyPair = cryptoManager.generateSigningKeyPair()
         val testUser = TestUser(userId, keyPair.privateKey, keyPair.publicKey, null)
@@ -327,44 +328,44 @@ class TestCryptoStore: CryptoStore {
     var prekeyPair: KeyPair? = null
     var oneTimePrekeys: HashMap<PublicKey, PrivateKey> = HashMap()
 
-    override fun saveIdentityKeyPair(keyPair: KeyPair) {
+    override suspend fun saveIdentityKeyPair(keyPair: KeyPair) {
         identityKeyPair = keyPair
     }
 
-    override fun savePrekeyPair(keyPair: KeyPair, signature: Signature) {
+    override suspend fun savePrekeyPair(keyPair: KeyPair, signature: Signature) {
         prekeyPair = keyPair
     }
 
-    override fun saveOneTimePrekeyPairs(keyPairs: List<KeyPair>) {
+    override suspend fun saveOneTimePrekeyPairs(keyPairs: List<KeyPair>) {
         for (keyPair in keyPairs) {
             oneTimePrekeys[keyPair.publicKey] = keyPair.privateKey
         }
     }
 
-    override fun loadIdentityKeyPair(): KeyPair = identityKeyPair!!
+    override suspend fun loadIdentityKeyPair(): KeyPair = identityKeyPair!!
 
-    override fun loadPrekeyPair(): KeyPair = prekeyPair!!
+    override suspend fun loadPrekeyPair(): KeyPair = prekeyPair!!
 
-    override fun loadPrekeySignature(): Signature {
+    override suspend fun loadPrekeySignature(): Signature {
         throw Exception("Not implemented")
     }
 
-    override fun loadPrivateOneTimePrekey(publicKey: PublicKey): PrivateKey = oneTimePrekeys[publicKey]!!
+    override suspend fun loadPrivateOneTimePrekey(publicKey: PublicKey): PrivateKey = oneTimePrekeys[publicKey]!!
 
-    override fun deleteOneTimePrekeyPair(publicKey: PublicKey) {
+    override suspend fun deleteOneTimePrekeyPair(publicKey: PublicKey) {
     }
 
-    override fun saveConversationState(conversationState: ConversationState) {
+    override suspend fun saveConversationState(conversationState: ConversationState) {
     }
 
-    override fun loadConversationState(
+    override suspend fun loadConversationState(
         userId: UserId,
         conversationId: ConversationId
     ): ConversationState? {
         throw Exception("Not implemented")
     }
 
-    override fun loadConversationStates(): List<ConversationState> {
+    override suspend fun loadConversationStates(): List<ConversationState> {
         throw Exception("Not implemented")
     }
 

@@ -3,7 +3,7 @@ package com.ticeapp.ticeandroidcrypto
 typealias Data = ByteArray
 
 interface CryptoManagerType {
-    fun reloadConversationStates()
+    suspend fun reloadConversationStates()
 
     fun generateDatabaseKey(length: Int): SecretKey
     fun generateSigningKeyPair(): KeyPair
@@ -22,12 +22,12 @@ interface CryptoManagerType {
 
     fun tokenKeyForGroup(groupKey: SecretKey, user: UserType): SecretKey
 
-    fun generateHandshakeKeyMaterial(signer: Signer, publicSigningKey: PublicKey): UserPublicKeys
-    fun renewHandshakeKeyMaterial(signer: Signer, publicSigningKey: PublicKey, renewSignedPrekey: Boolean): UserPublicKeys
+    suspend fun generateHandshakeKeyMaterial(signer: Signer, publicSigningKey: PublicKey): UserPublicKeys
+    suspend fun renewHandshakeKeyMaterial(signer: Signer, publicSigningKey: PublicKey, renewSignedPrekey: Boolean): UserPublicKeys
 
     fun conversationInitialized(userId: UserId, conversationId: ConversationId): Boolean
     fun conversationFingerprint(ciphertext: Ciphertext): ConversationFingerprint
-    fun initConversation(
+    suspend fun initConversation(
         userId: UserId,
         conversationId: ConversationId,
         remoteIdentityKey: PublicKey,
@@ -37,13 +37,13 @@ interface CryptoManagerType {
         remoteSigningKey: PublicKey
     ): ConversationInvitation
 
-    fun processConversationInvitation(conversationInvitation: ConversationInvitation, userId: UserId, conversationId: ConversationId)
+    suspend fun processConversationInvitation(conversationInvitation: ConversationInvitation, userId: UserId, conversationId: ConversationId)
 
     fun encrypt(data: Data): Pair<Ciphertext, SecretKey>
     fun encrypt(data: Data, secretKey: SecretKey): Ciphertext
-    fun encrypt(data: Data, userId: UserId, conversationId: ConversationId): Ciphertext
+    suspend fun encrypt(data: Data, userId: UserId, conversationId: ConversationId): Ciphertext
     fun decrypt(encryptedData: Data, secretKey: SecretKey): Data
-    fun decrypt(encryptedData: Data, encryptedSecretKey: Data, userId: UserId, conversationId: ConversationId): Data
+    suspend fun decrypt(encryptedData: Data, encryptedSecretKey: Data, userId: UserId, conversationId: ConversationId): Data
 
     fun generateAuthHeader(signingKey: PrivateKey, userId: UserId): Certificate
 }

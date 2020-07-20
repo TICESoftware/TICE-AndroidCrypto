@@ -4,7 +4,6 @@ import android.util.Base64
 import com.goterl.lazycode.lazysodium.LazySodiumAndroid
 import com.goterl.lazycode.lazysodium.SodiumAndroid
 import com.goterl.lazycode.lazysodium.interfaces.AEAD
-import com.goterl.lazycode.lazysodium.utils.Key
 import com.ticeapp.androiddoubleratchet.*
 import com.ticeapp.androidhkdf.deriveHKDFKey
 import com.ticeapp.androidx3dh.X3DH
@@ -40,7 +39,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
 
     @UnstableDefault
     @ImplicitReflectionSerializer
-    private fun saveConversationState(conversation: Conversation) {
+    private suspend fun saveConversationState(conversation: Conversation) {
         val sessionState = doubleRatchets[conversation]?.sessionState ?: return
 
         val serializedMessageKeyCache = Json.stringify(sessionState.messageKeyCacheState)
@@ -65,7 +64,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
     @UnstableDefault
     @ExperimentalStdlibApi
     @ImplicitReflectionSerializer
-    override fun reloadConversationStates() {
+    override suspend fun reloadConversationStates() {
         val cryptoStore = cryptoStore ?: throw CryptoManagerError.CryptoStoreNotFoundException()
         for (conversationState in cryptoStore.loadConversationStates()) {
             val rootChainKeyPair = KeyPair(conversationState.rootChainPrivateKey, conversationState.rootChainPublicKey).cryptoKeyPair()
@@ -166,14 +165,14 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
 
     // Handshake
 
-    override fun generateHandshakeKeyMaterial(signer: Signer, publicSigningKey: PublicKey): UserPublicKeys {
+    override suspend fun generateHandshakeKeyMaterial(signer: Signer, publicSigningKey: PublicKey): UserPublicKeys {
         val identityKeyPair = handshake.generateIdentityKeyPair()
         cryptoStore?.saveIdentityKeyPair(identityKeyPair.dataKeyPair())
 
         return renewHandshakeKeyMaterial(signer, publicSigningKey, renewSignedPrekey = true)
     }
 
-    override fun renewHandshakeKeyMaterial(signer: Signer, publicSigningKey: PublicKey, renewSignedPrekey: Boolean): UserPublicKeys {
+    override suspend fun renewHandshakeKeyMaterial(signer: Signer, publicSigningKey: PublicKey, renewSignedPrekey: Boolean): UserPublicKeys {
         val cryptoStore = cryptoStore ?: throw CryptoManagerError.CryptoStoreNotFoundException()
 
         val identityKeyPair = cryptoStore.loadIdentityKeyPair()
@@ -213,7 +212,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
     @UnstableDefault
     @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
-    override fun initConversation(
+    override suspend fun initConversation(
         userId: UserId,
         conversationId: ConversationId,
         remoteIdentityKey: PublicKey,
@@ -250,7 +249,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
     @UnstableDefault
     @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
-    override fun processConversationInvitation(conversationInvitation: ConversationInvitation, userId: UserId, conversationId: ConversationId) {
+    override suspend fun processConversationInvitation(conversationInvitation: ConversationInvitation, userId: UserId, conversationId: ConversationId) {
         val cryptoStore = cryptoStore ?: throw CryptoManagerError.CryptoStoreNotFoundException()
 
         val publicOneTimePrekey = conversationInvitation.usedOneTimePrekey ?: throw CryptoManagerError.OneTimePrekeyMissingException()
@@ -301,7 +300,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
     @UnstableDefault
     @ExperimentalStdlibApi
     @ImplicitReflectionSerializer
-    override fun encrypt(data: ByteArray, userId: UserId, conversationId: ConversationId): Ciphertext {
+    override suspend fun encrypt(data: ByteArray, userId: UserId, conversationId: ConversationId): Ciphertext {
         val conversation = Conversation(userId, conversationId)
         val doubleRatchet = doubleRatchets[conversation] ?: throw CryptoManagerError.ConversationNotInitializedException()
 
@@ -314,7 +313,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
     @UnstableDefault
     @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
-    fun decrypt(encryptedMessage: Ciphertext, userId: UserId, conversationId: ConversationId): ByteArray {
+    suspend fun decrypt(encryptedMessage: Ciphertext, userId: UserId, conversationId: ConversationId): ByteArray {
         val encryptedRawMessage = Json.parse(MessageSerializer, encryptedMessage.decodeToString())
         val conversation = Conversation(userId, conversationId)
         val doubleRatchet = doubleRatchets[conversation] ?: throw CryptoManagerError.ConversationNotInitializedException()
@@ -329,7 +328,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
     @UnstableDefault
     @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
-    override fun decrypt(encryptedData: Ciphertext, encryptedSecretKey: Ciphertext, userId: UserId, conversationId: ConversationId): ByteArray {
+    override suspend fun decrypt(encryptedData: Ciphertext, encryptedSecretKey: Ciphertext, userId: UserId, conversationId: ConversationId): ByteArray {
         val secretKey = decrypt(encryptedSecretKey, userId, conversationId)
         return decrypt(encryptedData, secretKey)
     }
