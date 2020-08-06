@@ -10,6 +10,7 @@ import com.ticeapp.androidx3dh.X3DH
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.PrematureJwtException
 import kotlinx.serialization.*
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.security.KeyPairGenerator
 import java.security.spec.ECGenParameterSpec
@@ -68,7 +69,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
         val cryptoStore = cryptoStore ?: throw CryptoManagerError.CryptoStoreNotFoundException()
         for (conversationState in cryptoStore.loadConversationStates()) {
             val rootChainKeyPair = KeyPair(conversationState.rootChainPrivateKey, conversationState.rootChainPublicKey).cryptoKeyPair()
-            val messageKeyCacheState: MessageKeyCacheState = Json.parse(conversationState.messageKeyCache)
+            val messageKeyCacheState: MessageKeyCacheState = Json.parse(ListSerializer(MessageKeyCacheEntry.serializer()), conversationState.messageKeyCache)
             val sessionState = SessionState(
                 conversationState.rootKey.cryptoKey(),
                 rootChainKeyPair,
