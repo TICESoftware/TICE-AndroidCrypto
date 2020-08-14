@@ -31,7 +31,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
 
     private val sodium = LazySodiumAndroid(SodiumAndroid())
     private val handshake: X3DH
-        get() = X3DH()
+        get() = X3DH(sodium = sodium)
 
     private val doubleRatchets: HashMap<Conversation, DoubleRatchet> = HashMap()
 
@@ -160,7 +160,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
         var inputKeyingMaterial = groupKey.clone()
         inputKeyingMaterial += user.publicSigningKey.clone()
 
-        return deriveHKDFKey(inputKeyingMaterial, L = 32)
+        return deriveHKDFKey(inputKeyingMaterial, L = 32, sodium = sodium)
     }
 
     // Handshake
