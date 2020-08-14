@@ -29,7 +29,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
         private const val JWT_VALIDATION_LEEWAY = 3
     }
 
-    private val sodium = LazySodiumAndroid(SodiumAndroid())
+    private val sodium = LazySodiumAndroid(SodiumAndroid(), Base64Coder)
     private val handshake: X3DH
         get() = X3DH(sodium = sodium)
 
