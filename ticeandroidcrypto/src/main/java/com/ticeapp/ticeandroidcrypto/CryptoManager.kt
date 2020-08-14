@@ -86,7 +86,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
             )
 
             val conversation = Conversation(conversationState.userId, conversationState.conversationId)
-            val doubleRatchet = DoubleRatchet(sessionState)
+            val doubleRatchet = DoubleRatchet(sessionState, sodium)
 
             doubleRatchets[conversation] = doubleRatchet
         }
@@ -238,7 +238,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
             INFO
         )
 
-        val doubleRatchet = DoubleRatchet(null, remoteSignedPrekey.cryptoKey(), keyAgreementInitiation.sharedSecret, MAX_SKIP, MAX_CACHE, INFO)
+        val doubleRatchet = DoubleRatchet(null, remoteSignedPrekey.cryptoKey(), keyAgreementInitiation.sharedSecret, MAX_SKIP, MAX_CACHE, INFO, sodium)
         val conversation = Conversation(userId, conversationId)
 
         doubleRatchets[conversation] = doubleRatchet
@@ -262,7 +262,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
 
         val sharedSecret = handshake.sharedSecretFromKeyAgreement(conversationInvitation.identityKey.cryptoKey(), conversationInvitation.ephemeralKey.cryptoKey(), oneTimePrekeyPair, identityKeyPair, prekeyPair, INFO)
 
-        val doubleRatchet = DoubleRatchet(prekeyPair, null, sharedSecret, MAX_SKIP, MAX_CACHE, INFO)
+        val doubleRatchet = DoubleRatchet(prekeyPair, null, sharedSecret, MAX_SKIP, MAX_CACHE, INFO, sodium)
         val conversation = Conversation(userId, conversationId)
 
         doubleRatchets[conversation] = doubleRatchet
