@@ -1,6 +1,5 @@
 package com.ticeapp.ticeandroidcrypto
 
-import android.util.Base64
 import com.goterl.lazycode.lazysodium.LazySodiumAndroid
 import com.goterl.lazycode.lazysodium.SodiumAndroid
 import com.goterl.lazycode.lazysodium.interfaces.AEAD
@@ -207,7 +206,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
     @ExperimentalStdlibApi
     override fun conversationFingerprint(ciphertext: Ciphertext): ConversationFingerprint {
         val message = Json.parse(MessageSerializer, ciphertext.decodeToString())
-        return Base64.encodeToString(message.header.publicKey.asBytes, Base64.DEFAULT)
+        return sodium.sodiumBin2Hex(message.header.publicKey.asBytes)
     }
 
     @UnstableDefault
