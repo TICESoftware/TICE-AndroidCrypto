@@ -39,7 +39,7 @@ dependencies {
     testImplementation 'junit:junit:4.13'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
-    implementation 'com.github.TICESoftware:AndroidX3DH:1.0.3'
+    implementation 'com.github.TICESoftware:AndroidX3DH:1.0.4'
     implementation 'com.github.TICESoftware:AndroidDoubleRatchet:1.0.9'
     implementation 'com.github.TICESoftware:AndroidHKDF:1.1.0'
     implementation "com.goterl.lazycode:lazysodium-android:4.1.1@aar"
