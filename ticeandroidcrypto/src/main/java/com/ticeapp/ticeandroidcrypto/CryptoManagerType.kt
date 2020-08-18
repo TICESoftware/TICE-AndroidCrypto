@@ -46,4 +46,5 @@ interface CryptoManagerType {
     suspend fun decrypt(encryptedData: Data, encryptedSecretKey: Data, userId: UserId, conversationId: ConversationId): Data
 
     fun generateAuthHeader(signingKey: PrivateKey, userId: UserId): Certificate
+    fun verify(authHeader: Certificate, userId: UserId, publicKey: PublicKey)
 }

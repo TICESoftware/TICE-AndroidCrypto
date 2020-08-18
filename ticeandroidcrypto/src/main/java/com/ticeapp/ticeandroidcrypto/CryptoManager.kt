@@ -354,6 +354,16 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
             .compact()
     }
 
+    @ExperimentalStdlibApi
+    override fun verify(authHeader: Certificate, userId: UserId, publicKey: PublicKey) {
+        Jwts.parserBuilder()
+            .setSigningKey(publicKey.verificationKey())
+            .requireIssuer(userId.uuidString())
+            .setAllowedClockSkewSeconds(JWT_VALIDATION_LEEWAY.toLong())
+            .build()
+            .parseClaimsJws(authHeader)
+    }
+
     // Signing / verifying
 
     private fun sign(prekey: PublicKey, signer: Signer): Signature {

@@ -37,6 +37,7 @@ class MainActivity : AppCompatActivity() {
         testSymmetricEncryptionFixKey()
         testSymmetricEncryptionGeneratedKey()
         testUserPublicKeysComparison()
+        testAuthHeader()
     }
 
     @ExperimentalStdlibApi
@@ -313,6 +314,16 @@ class MainActivity : AppCompatActivity() {
         if (userPublicKeys1 != userPublicKeys2) {
             throw Exception("Test failed")
         }
+    }
+
+    @ExperimentalStdlibApi
+    private fun testAuthHeader() {
+        val cryptoManager = CryptoManager(null)
+        val keyPair = cryptoManager.generateSigningKeyPair()
+        val userId = UserId.randomUUID()
+        val authHeader = cryptoManager.generateAuthHeader(keyPair.privateKey, userId)
+
+        cryptoManager.verify(authHeader, userId, keyPair.publicKey)
     }
 }
 
