@@ -21,8 +21,8 @@ typealias JWTId = UUID
 open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
     companion object {
         private const val INFO = "TICE"
-        private const val MAX_SKIP = 100
-        private const val MAX_CACHE = 100
+        private const val MAX_SKIP = 5000
+        private const val MAX_CACHE = 5010
         private const val ONE_TIME_PREKEY_COUNT = 100
         private const val SIGNING_ALGORITHM = "SHA512withECDSA"
         private const val CERTIFICATES_VALID_FOR = 60*60*24*30*6
