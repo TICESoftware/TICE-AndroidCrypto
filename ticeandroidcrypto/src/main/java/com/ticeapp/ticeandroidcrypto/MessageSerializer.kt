@@ -5,23 +5,29 @@ import com.ticeapp.androiddoubleratchet.Header
 import com.ticeapp.androiddoubleratchet.Message
 import kotlinx.serialization.*
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.buildClassSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 
 class UnsignedByteSerializer: KSerializer<UByte> {
-    override val descriptor: SerialDescriptor = PrimitiveDescriptor("UByte", PrimitiveKind.INT)
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("UByte", PrimitiveKind.INT)
     override fun serialize(encoder: Encoder, value: UByte) = encoder.encodeInt(value.toInt())
     override fun deserialize(decoder: Decoder): UByte = decoder.decodeInt().toUByte()
     override fun patch(decoder: Decoder, old: UByte): UByte = deserialize(decoder)
 }
 
 object HeaderSerializer: KSerializer<Header> {
-    @ImplicitReflectionSerializer
-    override val descriptor: SerialDescriptor = SerialDescriptor("Header") {
+    override val descriptor: SerialDescriptor = buildClassSerialDescriptor("Header") {
         element<String>("publicKey")
         element<String>("numberOfMessagesInPreviousSendingChain")
         element<String>("messageNumber")
     }
+
     @ExperimentalUnsignedTypes
-    @ImplicitReflectionSerializer
     override fun serialize(encoder: Encoder, value: Header) {
         val composite = encoder.beginStructure(descriptor)
         composite.encodeSerializableElement(descriptor, 0, ListSerializer(UnsignedByteSerializer()), value.publicKey.asBytes.toUByteArray().asList())
@@ -31,7 +37,6 @@ object HeaderSerializer: KSerializer<Header> {
     }
 
     @ExperimentalUnsignedTypes
-    @ImplicitReflectionSerializer
     override fun deserialize(decoder: Decoder): Header {
         val composite = decoder.beginStructure(descriptor)
 
@@ -51,18 +56,16 @@ object HeaderSerializer: KSerializer<Header> {
         return Header(publicKey!!, numberOfMessagesInPreviousSendingChain!!, messageNumber!!)
     }
     @ExperimentalUnsignedTypes
-    @ImplicitReflectionSerializer
     override fun patch(decoder: Decoder, old: Header): Header = deserialize(decoder)
 }
 
 object MessageSerializer: KSerializer<Message> {
-    @ImplicitReflectionSerializer
-    override val descriptor: SerialDescriptor = SerialDescriptor("Message") {
+    override val descriptor: SerialDescriptor = buildClassSerialDescriptor("Message") {
         element<String>("header")
         element<String>("cipher")
     }
+
     @ExperimentalUnsignedTypes
-    @ImplicitReflectionSerializer
     override fun serialize(encoder: Encoder, value: Message) {
         val composite = encoder.beginStructure(descriptor)
         composite.encodeSerializableElement(descriptor, 0, HeaderSerializer, value.header)
@@ -71,7 +74,6 @@ object MessageSerializer: KSerializer<Message> {
     }
 
     @ExperimentalUnsignedTypes
-    @ImplicitReflectionSerializer
     override fun deserialize(decoder: Decoder): Message {
         val composite = decoder.beginStructure(descriptor)
 
@@ -89,6 +91,5 @@ object MessageSerializer: KSerializer<Message> {
         return Message(header!!, cipher!!)
     }
     @ExperimentalUnsignedTypes
-    @ImplicitReflectionSerializer
     override fun patch(decoder: Decoder, old: Message): Message = deserialize(decoder)
 }

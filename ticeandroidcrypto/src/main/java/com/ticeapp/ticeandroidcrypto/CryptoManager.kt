@@ -37,12 +37,10 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
 
     // Conversation states
 
-    @UnstableDefault
-    @ImplicitReflectionSerializer
     private suspend fun saveConversationState(conversation: Conversation) {
         val sessionState = doubleRatchets[conversation]?.sessionState ?: return
 
-        val serializedMessageKeyCache = Json.stringify(sessionState.messageKeyCacheState)
+        val serializedMessageKeyCache = Json.encodeToString(sessionState.messageKeyCacheState)
         val conversationState = ConversationState(
             conversation.userId,
             conversation.conversationId,
@@ -61,14 +59,16 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
         cryptoStore?.saveConversationState(conversationState)
     }
 
-    @UnstableDefault
     @ExperimentalStdlibApi
-    @ImplicitReflectionSerializer
     override suspend fun reloadConversationStates() {
         val cryptoStore = cryptoStore ?: throw CryptoManagerError.CryptoStoreNotFoundException()
         for (conversationState in cryptoStore.loadConversationStates()) {
             val rootChainKeyPair = KeyPair(conversationState.rootChainPrivateKey, conversationState.rootChainPublicKey).cryptoKeyPair()
-            val messageKeyCacheState: MessageKeyCacheState = Json.parse(ListSerializer(MessageKeyCacheEntry.serializer()), conversationState.messageKeyCache)
+            val messageKeyCacheState: MessageKeyCacheState = Json.decodeFromString(
+                ListSerializer(
+                    MessageKeyCacheEntry.serializer()
+                ), conversationState.messageKeyCache
+            )
             val sessionState = SessionState(
                 conversationState.rootKey.cryptoKey(),
                 rootChainKeyPair,
@@ -202,15 +202,12 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
         return doubleRatchets.containsKey(conversation)
     }
 
-    @OptIn(UnstableDefault::class)
     @ExperimentalStdlibApi
     override fun conversationFingerprint(ciphertext: Ciphertext): ConversationFingerprint {
-        val message = Json.parse(MessageSerializer, ciphertext.decodeToString())
+        val message = Json.decodeFromString(MessageSerializer, ciphertext.decodeToString())
         return sodium.sodiumBin2Hex(message.header.publicKey.asBytes)
     }
 
-    @UnstableDefault
-    @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
     override suspend fun initConversation(
         userId: UserId,
@@ -246,8 +243,6 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
         return ConversationInvitation(identityKeyPair.publicKey, keyAgreementInitiation.ephemeralPublicKey.dataKey(), remoteOneTimePrekey)
     }
 
-    @UnstableDefault
-    @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
     override suspend fun processConversationInvitation(conversationInvitation: ConversationInvitation, userId: UserId, conversationId: ConversationId) {
         val cryptoStore = cryptoStore ?: throw CryptoManagerError.CryptoStoreNotFoundException()
@@ -297,9 +292,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
         return plaintext
     }
 
-    @UnstableDefault
     @ExperimentalStdlibApi
-    @ImplicitReflectionSerializer
     override suspend fun encrypt(data: ByteArray, userId: UserId, conversationId: ConversationId): Ciphertext {
         val conversation = Conversation(userId, conversationId)
         val doubleRatchet = doubleRatchets[conversation] ?: throw CryptoManagerError.ConversationNotInitializedException()
@@ -307,14 +300,12 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
         val message = doubleRatchet.encrypt(data)
         saveConversationState(conversation)
 
-        return Json.stringify(MessageSerializer, message).encodeToByteArray()
+        return Json.encodeToString(MessageSerializer, message).encodeToByteArray()
     }
 
-    @UnstableDefault
-    @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
     suspend fun decrypt(encryptedMessage: Ciphertext, userId: UserId, conversationId: ConversationId): ByteArray {
-        val encryptedRawMessage = Json.parse(MessageSerializer, encryptedMessage.decodeToString())
+        val encryptedRawMessage = Json.decodeFromString(MessageSerializer, encryptedMessage.decodeToString())
         val conversation = Conversation(userId, conversationId)
         val doubleRatchet = doubleRatchets[conversation] ?: throw CryptoManagerError.ConversationNotInitializedException()
 
@@ -324,9 +315,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
 
         return plaintext
     }
-
-    @UnstableDefault
-    @ImplicitReflectionSerializer
+    
     @ExperimentalStdlibApi
     override suspend fun decrypt(encryptedData: Ciphertext, encryptedSecretKey: Ciphertext, userId: UserId, conversationId: ConversationId): ByteArray {
         val secretKey = decrypt(encryptedSecretKey, userId, conversationId)

@@ -15,7 +15,6 @@ class MainActivity : AppCompatActivity() {
     val groupId = GroupId.fromString("E621E1F8-C36C-495A-93FC-0C247A3E6E5F")
     val userId = UserId.fromString("F621E1F8-C36C-495A-93FC-0C247A3E6E5F")
 
-    @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,7 +23,6 @@ class MainActivity : AppCompatActivity() {
         testLibrary()
     }
 
-    @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
     private fun testLibrary() {
         testUserSignedMembershipCertificate()
@@ -233,8 +231,6 @@ class MainActivity : AppCompatActivity() {
         } catch (e: SignatureException) { }
     }
 
-    @OptIn(UnstableDefault::class)
-    @ImplicitReflectionSerializer
     @ExperimentalStdlibApi
     private suspend fun testInitializeConversation() {
         val cryptoManager = CryptoManager(TestCryptoStore())
