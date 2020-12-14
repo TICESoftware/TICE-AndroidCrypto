@@ -25,6 +25,7 @@ class MainActivity : AppCompatActivity() {
 
     @ExperimentalStdlibApi
     private fun testLibrary() {
+        testSigningKeyPairGeneration()
         testUserSignedMembershipCertificate()
         testServerSignedMembershipCertificate()
         testValidateMembershipCertificateInvalidMembership()
@@ -36,6 +37,19 @@ class MainActivity : AppCompatActivity() {
         testSymmetricEncryptionGeneratedKey()
         testUserPublicKeysComparison()
         testAuthHeader()
+    }
+
+    @ExperimentalStdlibApi
+    private fun testSigningKeyPairGeneration() {
+        val cryptoManager = CryptoManager(null)
+        val keyPair = cryptoManager.generateSigningKeyPair()
+
+        val publicKeyString = keyPair.publicKey.decodeToString()
+        val lines = publicKeyString.split("\n")
+
+        if (lines.any { it.length > 64 }) {
+            throw Exception("Test failed")
+        }
     }
 
     @ExperimentalStdlibApi

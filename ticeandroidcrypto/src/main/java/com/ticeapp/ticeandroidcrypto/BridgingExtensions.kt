@@ -27,10 +27,15 @@ fun PrivateKey.signingKey(): SigningKey = KeyFactory.getInstance("EC").generateP
 
 @ExperimentalStdlibApi fun VerificationKey.dataKey(): PublicKey {
     val publicKeyHeader = "-----BEGIN PUBLIC KEY-----"
-    val publicKey = Base64.encodeToString(encoded, Base64.DEFAULT)
+    val publicKey =
+        Base64
+        .encodeToString(encoded, Base64.DEFAULT)
+        .replace("\n", "")
+        .chunked(64)
+        .fold("") { string, line -> string + line + "\n" }
     val publicKeyFooter = "-----END PUBLIC KEY-----"
 
-    val publicKeyString = publicKeyHeader + publicKey + publicKeyFooter
+    val publicKeyString = publicKeyHeader + "\n" + publicKey + publicKeyFooter
     return publicKeyString.encodeToByteArray()
 }
 
