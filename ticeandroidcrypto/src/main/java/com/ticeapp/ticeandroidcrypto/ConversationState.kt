@@ -11,8 +11,7 @@ data class ConversationState(
     val receivingChainKey: SecretKey?,
     val sendMessageNumber: Int,
     val receivedMessageNumber: Int,
-    val previousSendingChanLength: Int,
-    val messageKeyCache: String
+    val previousSendingChanLength: Int
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -40,7 +39,6 @@ data class ConversationState(
         if (sendMessageNumber != other.sendMessageNumber) return false
         if (receivedMessageNumber != other.receivedMessageNumber) return false
         if (previousSendingChanLength != other.previousSendingChanLength) return false
-        if (messageKeyCache != other.messageKeyCache) return false
 
         return true
     }
@@ -57,7 +55,6 @@ data class ConversationState(
         result = 31 * result + sendMessageNumber
         result = 31 * result + receivedMessageNumber
         result = 31 * result + previousSendingChanLength
-        result = 31 * result + messageKeyCache.hashCode()
         return result
     }
 }

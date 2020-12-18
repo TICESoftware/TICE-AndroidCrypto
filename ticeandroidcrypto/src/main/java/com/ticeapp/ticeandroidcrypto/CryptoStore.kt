@@ -1,5 +1,7 @@
 package com.ticeapp.ticeandroidcrypto
 
+import com.ticeapp.androiddoubleratchet.MessageKeyCache
+
 interface CryptoStore {
     suspend fun saveIdentityKeyPair(keyPair: KeyPair)
     suspend fun savePrekeyPair(keyPair: KeyPair, signature: Signature)
@@ -13,4 +15,5 @@ interface CryptoStore {
     suspend fun saveConversationState(conversationState: ConversationState)
     suspend fun loadConversationState(userId: UserId, conversationId: ConversationId): ConversationState?
     suspend fun loadConversationStates(): List<ConversationState>
+    suspend fun messageKeyCache(conversationId: ConversationId): MessageKeyCache
 }

@@ -40,7 +40,6 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
     private suspend fun saveConversationState(conversation: Conversation) {
         val sessionState = doubleRatchets[conversation]?.sessionState ?: return
 
-        val serializedMessageKeyCache = Json.encodeToString(sessionState.messageKeyCacheState)
         val conversationState = ConversationState(
             conversation.userId,
             conversation.conversationId,
@@ -52,8 +51,7 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
             sessionState.receivingChainKey?.dataKey(),
             sessionState.sendMessageNumber,
             sessionState.receivedMessageNumber,
-            sessionState.previousSendingChainLength,
-            serializedMessageKeyCache
+            sessionState.previousSendingChainLength
         )
 
         cryptoStore?.saveConversationState(conversationState)
@@ -64,11 +62,6 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
         val cryptoStore = cryptoStore ?: throw CryptoManagerError.CryptoStoreNotFoundException()
         for (conversationState in cryptoStore.loadConversationStates()) {
             val rootChainKeyPair = KeyPair(conversationState.rootChainPrivateKey, conversationState.rootChainPublicKey).cryptoKeyPair()
-            val messageKeyCacheState: MessageKeyCacheState = Json.decodeFromString(
-                ListSerializer(
-                    MessageKeyCacheEntry.serializer()
-                ), conversationState.messageKeyCache
-            )
             val sessionState = SessionState(
                 conversationState.rootKey.cryptoKey(),
                 rootChainKeyPair,
@@ -78,14 +71,13 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
                 conversationState.sendMessageNumber,
                 conversationState.receivedMessageNumber,
                 conversationState.previousSendingChanLength,
-                messageKeyCacheState,
                 INFO,
-                MAX_SKIP,
-                MAX_CACHE
+                MAX_SKIP
             )
 
             val conversation = Conversation(conversationState.userId, conversationState.conversationId)
-            val doubleRatchet = DoubleRatchet(sessionState, sodium)
+            val messageKeyCache = cryptoStore.messageKeyCache(conversationState.conversationId)
+            val doubleRatchet = DoubleRatchet(sessionState, messageKeyCache, sodium)
 
             doubleRatchets[conversation] = doubleRatchet
         }
@@ -234,7 +226,8 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
             INFO
         )
 
-        val doubleRatchet = DoubleRatchet(null, remoteSignedPrekey.cryptoKey(), keyAgreementInitiation.sharedSecret, MAX_SKIP, MAX_CACHE, INFO, sodium)
+        val messageKeyCache = cryptoStore.messageKeyCache(conversationId)
+        val doubleRatchet = DoubleRatchet(null, remoteSignedPrekey.cryptoKey(), keyAgreementInitiation.sharedSecret, MAX_SKIP, INFO, messageKeyCache, sodium)
         val conversation = Conversation(userId, conversationId)
 
         doubleRatchets[conversation] = doubleRatchet
@@ -256,7 +249,8 @@ open class CryptoManager(val cryptoStore: CryptoStore?): CryptoManagerType {
 
         val sharedSecret = handshake.sharedSecretFromKeyAgreement(conversationInvitation.identityKey.cryptoKey(), conversationInvitation.ephemeralKey.cryptoKey(), oneTimePrekeyPair, identityKeyPair, prekeyPair, INFO)
 
-        val doubleRatchet = DoubleRatchet(prekeyPair, null, sharedSecret, MAX_SKIP, MAX_CACHE, INFO, sodium)
+        val messageKeyCache = cryptoStore.messageKeyCache(conversationId)
+        val doubleRatchet = DoubleRatchet(prekeyPair, null, sharedSecret, MAX_SKIP, INFO, messageKeyCache, sodium)
         val conversation = Conversation(userId, conversationId)
 
         doubleRatchets[conversation] = doubleRatchet

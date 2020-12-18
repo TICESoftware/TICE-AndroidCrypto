@@ -2,8 +2,8 @@ package com.ticeapp.ticeandroidcryptoapp
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import com.ticeapp.androiddoubleratchet.MessageKeyCache
 import com.ticeapp.ticeandroidcrypto.*
-import kotlinx.serialization.*
 import io.jsonwebtoken.*
 import io.jsonwebtoken.security.SignatureException
 import kotlinx.coroutines.runBlocking
@@ -390,4 +390,22 @@ class TestCryptoStore: CryptoStore {
         throw Exception("Not implemented")
     }
 
+    override suspend fun messageKeyCache(conversationId: ConversationId): MessageKeyCache = Cache()
+
+}
+
+class Cache: MessageKeyCache {
+    data class MapKey(val messageNumber: Int, val publicKey: ByteArray)
+    private val cachedKeys: MutableMap<MapKey, ByteArray> = mutableMapOf<MapKey, ByteArray>()
+
+    override suspend fun add(messageKey: ByteArray, messageNumber: Int, publicKey: ByteArray) {
+        cachedKeys[MapKey(messageNumber, publicKey)] = messageKey
+    }
+
+    override suspend fun getMessageKey(messageNumber: Int, publicKey: ByteArray): ByteArray? =
+        cachedKeys[MapKey(messageNumber, publicKey)]
+
+    override suspend fun remove(publicKey: ByteArray, messageNumber: Int) {
+        cachedKeys.remove(MapKey(messageNumber, publicKey))
+    }
 }
